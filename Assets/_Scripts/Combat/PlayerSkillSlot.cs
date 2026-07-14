@@ -6,7 +6,10 @@ using UnityEngine;
 [RequireComponent(typeof(PlayerMovement))]
 public sealed class PlayerSkillSlot : MonoBehaviour
 {
-    public const int SlotCount = 2;
+    public const int PassiveSlotCount = 2;
+    public const int ActiveSlotCount = 1;
+    public const int ActiveSlotIndex = PassiveSlotCount;
+    public const int SlotCount = PassiveSlotCount + ActiveSlotCount;
 
     [SerializeField] private PlayerMovement playerMovement;
     [SerializeField] private EnemySkillData[] equippedSkills = new EnemySkillData[SlotCount];
@@ -33,7 +36,11 @@ public sealed class PlayerSkillSlot : MonoBehaviour
 
     private void Awake()
     {
+        if (GetComponent<PlayerSkillRuntime>() == null)
+            gameObject.AddComponent<PlayerSkillRuntime>();
+
         EnsureInitialized();
+        NormalizeSlotTypes();
         ApplyEquippedSkills();
     }
 
@@ -43,13 +50,14 @@ public sealed class PlayerSkillSlot : MonoBehaviour
             return;
 
         EnsureSlotArray();
-        int emptySlot = Array.FindIndex(equippedSkills, equipped => equipped == null);
-        Equip(skill, emptySlot >= 0 ? emptySlot : 0);
+        int emptySlot = FindEmptyCompatibleSlot(skill);
+        Equip(skill, emptySlot >= 0 ? emptySlot : GetFirstCompatibleSlot(skill));
     }
 
     public void Equip(EnemySkillData skill, int slotIndex)
     {
-        if (skill == null || slotIndex < 0 || slotIndex >= SlotCount || Contains(skill))
+        if (skill == null || slotIndex < 0 || slotIndex >= SlotCount ||
+            Contains(skill) || !IsSlotCompatible(slotIndex, skill))
             return;
 
         EnsureInitialized();
@@ -66,7 +74,7 @@ public sealed class PlayerSkillSlot : MonoBehaviour
             return false;
 
         EnsureInitialized();
-        slotIndex = Array.FindIndex(equippedSkills, equipped => equipped == null);
+        slotIndex = FindEmptyCompatibleSlot(skill);
         if (slotIndex < 0)
             return false;
 
@@ -94,19 +102,34 @@ public sealed class PlayerSkillSlot : MonoBehaviour
         return Array.IndexOf(equippedSkills, skill) >= 0;
     }
 
-    public bool ContainsEffect(EnemySkillEffectType effectType)
+    public bool ContainsSkill<TSkill>() where TSkill : EnemySkillData
     {
         EnsureSlotArray();
         for (int i = 0; i < equippedSkills.Length; i++)
         {
-            if (equippedSkills[i] != null && equippedSkills[i].EffectType == effectType)
+            if (equippedSkills[i] is TSkill)
                 return true;
         }
 
         return false;
     }
 
-    public bool HasUnequippedSkill(IReadOnlyList<EnemySkillData> skills)
+    public bool IsSlotCompatible(int slotIndex, EnemySkillData skill)
+    {
+        if (skill == null || slotIndex < 0 || slotIndex >= SlotCount)
+            return false;
+
+        return skill.SkillType == EnemySkillType.Active
+            ? slotIndex == ActiveSlotIndex
+            : slotIndex < PassiveSlotCount;
+    }
+
+    public bool IsFullFor(EnemySkillData skill)
+    {
+        return FindEmptyCompatibleSlot(skill) < 0;
+    }
+
+    public bool HasUnequippedSkill<TSkill>(IReadOnlyList<TSkill> skills) where TSkill : EnemySkillData
     {
         if (skills == null)
             return false;
@@ -171,6 +194,55 @@ public sealed class PlayerSkillSlot : MonoBehaviour
         equippedSkills = resized;
     }
 
+    private int FindEmptyCompatibleSlot(EnemySkillData skill)
+    {
+        if (skill == null)
+            return -1;
+
+        EnsureSlotArray();
+        int start = skill.SkillType == EnemySkillType.Active ? ActiveSlotIndex : 0;
+        int end = skill.SkillType == EnemySkillType.Active ? SlotCount : PassiveSlotCount;
+        for (int i = start; i < end; i++)
+        {
+            if (equippedSkills[i] == null)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static int GetFirstCompatibleSlot(EnemySkillData skill)
+    {
+        return skill != null && skill.SkillType == EnemySkillType.Active ? ActiveSlotIndex : 0;
+    }
+
+    private void NormalizeSlotTypes()
+    {
+        EnsureSlotArray();
+        EnemySkillData activeCandidate = null;
+
+        for (int i = 0; i < PassiveSlotCount; i++)
+        {
+            if (equippedSkills[i] == null || equippedSkills[i].SkillType == EnemySkillType.Passive)
+                continue;
+
+            activeCandidate ??= equippedSkills[i];
+            equippedSkills[i] = null;
+        }
+
+        EnemySkillData activeSlotSkill = equippedSkills[ActiveSlotIndex];
+        if (activeSlotSkill != null && activeSlotSkill.SkillType != EnemySkillType.Active)
+        {
+            int passiveSlot = FindEmptyCompatibleSlot(activeSlotSkill);
+            if (passiveSlot >= 0)
+                equippedSkills[passiveSlot] = activeSlotSkill;
+            equippedSkills[ActiveSlotIndex] = null;
+        }
+
+        if (equippedSkills[ActiveSlotIndex] == null && activeCandidate != null)
+            equippedSkills[ActiveSlotIndex] = activeCandidate;
+    }
+
     private void ApplyEquippedSkills()
     {
         if (!baseValuesCaptured)
@@ -185,11 +257,8 @@ public sealed class PlayerSkillSlot : MonoBehaviour
             if (skill == null)
                 continue;
 
-            float multiplier = Mathf.Max(0.01f, skill.Multiplier);
-            if (skill.EffectType == EnemySkillEffectType.JumpMultiplier)
-                jumpMultiplier *= multiplier;
-            else if (skill.EffectType == EnemySkillEffectType.MovementSpeedMultiplier)
-                movementMultiplier *= multiplier;
+            jumpMultiplier *= Mathf.Max(0.01f, skill.JumpMultiplier);
+            movementMultiplier *= Mathf.Max(0.01f, skill.MovementSpeedMultiplier);
         }
 
         PlayerMovementSettings settings = playerMovement.playerSettings;

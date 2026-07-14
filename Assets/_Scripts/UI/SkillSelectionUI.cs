@@ -17,7 +17,8 @@ public sealed class SkillSelectionUI : MonoBehaviour
     private bool previousCursorVisible;
 
     public void Show(
-        IReadOnlyList<EnemySkillData> skills,
+        IReadOnlyList<PassiveSkillBase> passiveSkills,
+        IReadOnlyList<ActiveSkillBase> activeSkills,
         PlayerSkillSlot skillSlot,
         string targetName,
         Action<EnemySkillData> selectionCallback)
@@ -39,7 +40,7 @@ public sealed class SkillSelectionUI : MonoBehaviour
         selectedSkill = null;
         UpdateSelectedSkillLabel();
         BindPlayerSlots();
-        BindOptions(skills);
+        BindOptions(passiveSkills, activeSkills);
     }
 
     public void Hide()
@@ -64,32 +65,45 @@ public sealed class SkillSelectionUI : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    private void BindOptions(IReadOnlyList<EnemySkillData> skills)
+    private void BindOptions(
+        IReadOnlyList<PassiveSkillBase> passiveSkills,
+        IReadOnlyList<ActiveSkillBase> activeSkills)
     {
         if (optionButtons == null)
             return;
 
-        int skillIndex = 0;
+        int passiveIndex = 0;
+        int activeIndex = 0;
         for (int buttonIndex = 0; buttonIndex < optionButtons.Length; buttonIndex++)
         {
             SkillOptionButton option = optionButtons[buttonIndex];
             if (option == null)
                 continue;
 
-            while (skills != null && skillIndex < skills.Count && skills[skillIndex] == null)
-                skillIndex++;
-
-            if (skills != null && skillIndex < skills.Count)
+            EnemySkillData skill = GetNextSkill(passiveSkills, ref passiveIndex);
+            skill ??= GetNextSkill(activeSkills, ref activeIndex);
+            if (skill != null)
             {
-                EnemySkillData skill = skills[skillIndex];
                 option.Bind(skill, SelectSkill, !playerSkillSlot.Contains(skill));
-                skillIndex++;
             }
             else
             {
                 option.Clear();
             }
         }
+    }
+
+    private static EnemySkillData GetNextSkill<TSkill>(IReadOnlyList<TSkill> skills, ref int index)
+        where TSkill : EnemySkillData
+    {
+        while (skills != null && index < skills.Count)
+        {
+            TSkill skill = skills[index++];
+            if (skill != null)
+                return skill;
+        }
+
+        return null;
     }
 
     private void SelectSkill(EnemySkillData skill)
@@ -136,8 +150,14 @@ public sealed class SkillSelectionUI : MonoBehaviour
             EnemySkillData equipped = playerSkillSlot != null
                 ? playerSkillSlot.GetEquippedSkill(i)
                 : null;
-            bool canReplace = playerSkillSlot != null && playerSkillSlot.IsFull && selectedSkill != null;
-            slotButton.Bind(i, equipped, SelectPlayerSlot, canReplace);
+            bool canReplace = playerSkillSlot != null && selectedSkill != null &&
+                playerSkillSlot.IsFullFor(selectedSkill) && playerSkillSlot.IsSlotCompatible(i, selectedSkill);
+            slotButton.Bind(
+                i,
+                equipped,
+                i == PlayerSkillSlot.ActiveSlotIndex ? EnemySkillType.Active : EnemySkillType.Passive,
+                SelectPlayerSlot,
+                canReplace);
         }
     }
 
@@ -146,10 +166,15 @@ public sealed class SkillSelectionUI : MonoBehaviour
         if (selectedSkillLabel == null)
             return;
 
-        selectedSkillLabel.text = selectedSkill != null
-            ? $"SELECTED: {selectedSkill.DisplayName}\nCHOOSE SLOT 1 OR 2"
-            : playerSkillSlot != null && !playerSkillSlot.IsFull
-                ? "SELECT A SKILL\nEMPTY SLOT WILL AUTO-EQUIP"
-                : "SELECT A SKILL, THEN CHOOSE A SLOT";
+        if (selectedSkill != null)
+        {
+            selectedSkillLabel.text = selectedSkill.SkillType == EnemySkillType.Active
+                ? $"SELECTED: {selectedSkill.DisplayName}\nCHOOSE ACTIVE SLOT"
+                : $"SELECTED: {selectedSkill.DisplayName}\nCHOOSE PASSIVE SLOT 1 OR 2";
+            return;
+        }
+
+        selectedSkillLabel.text = "SELECT A SKILL\nEMPTY MATCHING SLOT WILL AUTO-EQUIP";
     }
+
 }

@@ -85,7 +85,9 @@ public static class SkillStealPlayModeSmoke
 
                 if (container.Skills.Count == 2 && twoSkillTarget == null)
                     twoSkillTarget = container;
-                else if (container.Skills.Count >= 3)
+                else if (ContainsSkill<Skill_MoonShoes>(container) &&
+                         ContainsSkill<Skill_OperationCWAL>(container) &&
+                         ContainsSkill<Skill_ShowMeTheMoney>(container))
                     threeSkillTargets.Add(container);
             }
 
@@ -95,7 +97,7 @@ public static class SkillStealPlayModeSmoke
             SkillOptionButton[] options = GetPrivateField<SkillOptionButton[]>(selectionUI, "optionButtons");
             PlayerSkillSlotButton[] slotButtons = GetPrivateField<PlayerSkillSlotButton[]>(selectionUI, "playerSlotButtons");
             Assert(options != null && options.Length >= 3, "Three runtime skill option buttons are required.");
-            Assert(slotButtons != null && slotButtons.Length == PlayerSkillSlot.SlotCount, "Two runtime player slot buttons are required.");
+            Assert(slotButtons != null && slotButtons.Length == PlayerSkillSlot.SlotCount, "The scene must contain two passive slot buttons and one active slot button.");
 
             Button jumpButton = options[0].GetComponent<Button>();
             Button sprintButton = options[1].GetComponent<Button>();
@@ -106,7 +108,7 @@ public static class SkillStealPlayModeSmoke
 
             float originalJumpForce = movement.playerSettings.jumpForce;
             float originalTimeScale = Time.timeScale;
-            Weapon_SO pistol = threeSkillTargets[0].Skills[2].EffectType == EnemySkillEffectType.PistolNoReload
+            Weapon_SO pistol = threeSkillTargets[0].Skills[2] is Skill_ShowMeTheMoney
                 ? GetPrivateField<Weapon_SO>(moneyEffect, "pistol")
                 : null;
             Assert(pistol != null, "ShowMeTheMoney Pistol reference is missing.");
@@ -124,7 +126,7 @@ public static class SkillStealPlayModeSmoke
             Assert(!firstSlotButton.interactable, "Slot selection should be disabled while an empty slot exists.");
             jumpButton.onClick.Invoke();
 
-            Assert(slot.GetEquippedSkill(0)?.EffectType == EnemySkillEffectType.JumpMultiplier, "First selection did not auto-equip slot 1.");
+            Assert(slot.GetEquippedSkill(0) is Skill_MoonShoes, "First selection did not auto-equip slot 1.");
             Assert(slot.GetEquippedSkill(1) == null, "First selection unexpectedly filled slot 2.");
             Assert(Mathf.Approximately(movement.playerSettings.jumpForce, originalJumpForce * 1.6f), "Super Jump was not applied.");
             AssertCombatResumed(playerHack, gameManager, bulletTime, selectionUI, originalTimeScale, firstHealth);
@@ -140,8 +142,8 @@ public static class SkillStealPlayModeSmoke
             Assert(!firstSlotButton.interactable, "Slot replacement should remain disabled while slot 2 is empty.");
             sprintButton.onClick.Invoke();
 
-            Assert(slot.GetEquippedSkill(0)?.EffectType == EnemySkillEffectType.JumpMultiplier, "Second selection replaced slot 1 instead of filling slot 2.");
-            Assert(slot.GetEquippedSkill(1)?.EffectType == EnemySkillEffectType.MovementSpeedMultiplier, "Second selection did not auto-equip slot 2.");
+            Assert(slot.GetEquippedSkill(0) is Skill_MoonShoes, "Second selection replaced slot 1 instead of filling slot 2.");
+            Assert(slot.GetEquippedSkill(1) is Skill_OperationCWAL, "Second selection did not auto-equip slot 2.");
             AssertCombatResumed(playerHack, gameManager, bulletTime, selectionUI, originalTimeScale, secondHealth);
 
             EnemyHealth duplicateHealth = BeginSelection(
@@ -169,8 +171,8 @@ public static class SkillStealPlayModeSmoke
             Assert(Mathf.Approximately(Time.timeScale, 0f), "Time resumed before replacement finished.");
             firstSlotButton.onClick.Invoke();
 
-            Assert(slot.GetEquippedSkill(0)?.EffectType == EnemySkillEffectType.PistolNoReload, "ShowMeTheMoney did not replace slot 1.");
-            Assert(slot.GetEquippedSkill(1)?.EffectType == EnemySkillEffectType.MovementSpeedMultiplier, "Replacing slot 1 changed slot 2.");
+            Assert(slot.GetEquippedSkill(0) is Skill_ShowMeTheMoney, "ShowMeTheMoney did not replace slot 1.");
+            Assert(slot.GetEquippedSkill(1) is Skill_OperationCWAL, "Replacing slot 1 changed slot 2.");
             Assert(moneyEffect.IsApplied, "ShowMeTheMoney runtime effect was not applied.");
             Assert(pistol.infiniteBullets, "ShowMeTheMoney did not disable Pistol ammo consumption.");
             AssertCombatResumed(playerHack, gameManager, bulletTime, selectionUI, originalTimeScale, thirdHealth);
@@ -261,6 +263,18 @@ public static class SkillStealPlayModeSmoke
         FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
         Assert(field != null, $"Field {fieldName} was not found.");
         return (T)field.GetValue(target);
+    }
+
+    private static bool ContainsSkill<TSkill>(EnemySkillContainer container) where TSkill : EnemySkillData
+    {
+        IReadOnlyList<EnemySkillData> skills = container.Skills;
+        for (int i = 0; i < skills.Count; i++)
+        {
+            if (skills[i] is TSkill)
+                return true;
+        }
+
+        return false;
     }
 
     private static void Assert(bool condition, string message)

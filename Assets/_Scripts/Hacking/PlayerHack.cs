@@ -266,7 +266,9 @@ public class PlayerHack : MonoBehaviour
             return;
         }
 
-        if (!playerSkillSlot.HasUnequippedSkill(skillContainer.Skills))
+        bool hasPassive = playerSkillSlot.HasUnequippedSkill(skillContainer.PassiveSkills);
+        bool hasActive = playerSkillSlot.HasUnequippedSkill(skillContainer.ActiveSkills);
+        if (!hasPassive && !hasActive)
         {
             CompleteHacking(HackingResult.Success);
             return;
@@ -282,7 +284,8 @@ public class PlayerHack : MonoBehaviour
         IsSelectingSkill = true;
         hackingUI?.Hide();
         skillSelectionUI.Show(
-            skillContainer.Skills,
+            skillContainer.PassiveSkills,
+            skillContainer.ActiveSkills,
             playerSkillSlot,
             GetTargetDisplayName(CurrentTarget),
             HandleSkillSelected);

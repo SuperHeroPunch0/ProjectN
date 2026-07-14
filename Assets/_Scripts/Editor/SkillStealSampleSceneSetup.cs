@@ -13,33 +13,53 @@ public static class SkillStealSampleSceneSetup
 {
     private const string ScenePath = "Assets/Scenes/SampleScene.unity";
     private const string SkillFolder = "Assets/_Data/Skills";
-    private const string SuperJumpPath = SkillFolder + "/SuperJump.asset";
-    private const string SuperSprintPath = SkillFolder + "/SuperSprint.asset";
-    private const string ShowMeTheMoneyPath = SkillFolder + "/ShowMeTheMoney.asset";
+    private const string PassiveFolder = SkillFolder + "/Passive";
+    private const string ActiveFolder = SkillFolder + "/Active";
+    private const string SuperJumpPath = PassiveFolder + "/MoonShoes.asset";
+    private const string SuperSprintPath = PassiveFolder + "/OperationCWAL.asset";
+    private const string ShowMeTheMoneyPath = PassiveFolder + "/ShowMeTheMoney.asset";
+    private const string AirExePath = PassiveFolder + "/AirEXE.asset";
+    private const string ElephantPath = ActiveFolder + "/Elephant.asset";
+    private const string ItsMePath = ActiveFolder + "/ItsMe.asset";
     private const string PistolPath = "Assets/Cowsins/ScriptableObjects/Weapons/Pistol.asset";
 
     [MenuItem("NullPoint/Setup Skill Steal Sample Scene")]
     public static void SetupSampleScene()
     {
         Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        EnemySkillData superJump = CreateOrUpdateSkill(
+        Skill_MoonShoes superJump = CreateOrUpdateSkill<Skill_MoonShoes>(
             SuperJumpPath,
-            "SUPER JUMP",
-            "Jump power x1.6",
-            EnemySkillEffectType.JumpMultiplier,
-            1.6f);
-        EnemySkillData superSprint = CreateOrUpdateSkill(
+            "Moon Shoes",
+            "점프가 1.6배 높아집니다.",
+            1.6f, 0f, 0f, 0f, 0f);
+        Skill_OperationCWAL superSprint = CreateOrUpdateSkill<Skill_OperationCWAL>(
             SuperSprintPath,
-            "SUPER SPRINT",
-            "Movement speed x1.5",
-            EnemySkillEffectType.MovementSpeedMultiplier,
-            1.5f);
-        EnemySkillData showMeTheMoney = CreateOrUpdateSkill(
+            "Operation CWAL",
+            "이동 속도가 1.5배 늘어납니다.",
+            1.5f, 0f, 0f, 0f, 0f);
+        Skill_ShowMeTheMoney showMeTheMoney = CreateOrUpdateSkill<Skill_ShowMeTheMoney>(
             ShowMeTheMoneyPath,
             "SHOW ME THE MONEY",
-            "Pistol never needs to reload",
-            EnemySkillEffectType.PistolNoReload,
-            1f);
+            "재장전이 사라집니다.",
+            1f, 0f, 0f, 0f, 0f);
+        Skill_AirEXE airExe = CreateOrUpdateSkill<Skill_AirEXE>(
+            AirExePath,
+            "Air.exe",
+            "공중에 뜬 적을 사격하면 폭발 효과가 발생",
+            1f, 0f, 3f, 0f, 8f);
+        Skill_Elephant elephant = CreateOrUpdateSkill<Skill_Elephant>(
+            ElephantPath,
+            "Elephant",
+            "범위 안의 적을 공중에 띄웁니다. 쿨타임 6초.",
+            1f, 6f, 8f, 3f, 2f,
+            4f);
+        Skill_ItsMe itsMe = CreateOrUpdateSkill<Skill_ItsMe>(
+            ItsMePath,
+            "It's me !",
+            "공중에서 내려찍어 범위 내 적들을 잠시 경직시킵니다. 쿨타임 4초.",
+            1f, 4f, 6f, 1.5f, 22f,
+            1.5f);
+        EnemySkillData[] additionalSkills = { airExe, elephant, itsMe };
 
         PlayerHack playerHack = UnityEngine.Object.FindFirstObjectByType<PlayerHack>(FindObjectsInactive.Include);
         if (playerHack == null)
@@ -99,15 +119,26 @@ public static class SkillStealSampleSceneSetup
                 container = enemy.gameObject.AddComponent<EnemySkillContainer>();
 
             SerializedObject containerObject = new SerializedObject(container);
-            SerializedProperty skills = containerObject.FindProperty("skills");
-            // One two-skill target exercises the all-owned fast path. The others
-            // expose all three skills so a full loadout can exercise replacement.
+            SerializedProperty passiveSkills = containerObject.FindProperty("passiveSkills");
+            SerializedProperty activeSkills = containerObject.FindProperty("activeSkills");
+            // 마지막 적은 all-owned 단축 경로용, 나머지는 기본 3종과
+            // 추가 스킬을 순환 배치해 데이터 폴더의 6종을 모두 획득 가능하게 한다.
             bool isAllOwnedTestTarget = enemyIndex == sceneEnemies.Count - 1;
-            skills.arraySize = isAllOwnedTestTarget ? 2 : 3;
-            skills.GetArrayElementAtIndex(0).objectReferenceValue = superJump;
-            skills.GetArrayElementAtIndex(1).objectReferenceValue = superSprint;
+            EnemySkillData additionalSkill = additionalSkills[enemyIndex % additionalSkills.Length];
+            bool hasAdditionalPassive = !isAllOwnedTestTarget && additionalSkill is PassiveSkillBase;
+            bool hasAdditionalActive = !isAllOwnedTestTarget && additionalSkill is ActiveSkillBase;
+            passiveSkills.arraySize = isAllOwnedTestTarget ? 2 : hasAdditionalPassive ? 4 : 3;
+            passiveSkills.GetArrayElementAtIndex(0).objectReferenceValue = superJump;
+            passiveSkills.GetArrayElementAtIndex(1).objectReferenceValue = superSprint;
             if (!isAllOwnedTestTarget)
-                skills.GetArrayElementAtIndex(2).objectReferenceValue = showMeTheMoney;
+            {
+                passiveSkills.GetArrayElementAtIndex(2).objectReferenceValue = showMeTheMoney;
+                if (hasAdditionalPassive)
+                    passiveSkills.GetArrayElementAtIndex(3).objectReferenceValue = additionalSkill;
+            }
+            activeSkills.arraySize = hasAdditionalActive ? 1 : 0;
+            if (hasAdditionalActive)
+                activeSkills.GetArrayElementAtIndex(0).objectReferenceValue = additionalSkill;
             containerObject.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -130,17 +161,22 @@ public static class SkillStealSampleSceneSetup
     public static void SmokeTest()
     {
         Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        EnemySkillData superJump = AssetDatabase.LoadAssetAtPath<EnemySkillData>(SuperJumpPath);
-        EnemySkillData superSprint = AssetDatabase.LoadAssetAtPath<EnemySkillData>(SuperSprintPath);
-        EnemySkillData showMeTheMoney = AssetDatabase.LoadAssetAtPath<EnemySkillData>(ShowMeTheMoneyPath);
+        Skill_MoonShoes superJump = AssetDatabase.LoadAssetAtPath<Skill_MoonShoes>(SuperJumpPath);
+        Skill_OperationCWAL superSprint = AssetDatabase.LoadAssetAtPath<Skill_OperationCWAL>(SuperSprintPath);
+        Skill_ShowMeTheMoney showMeTheMoney = AssetDatabase.LoadAssetAtPath<Skill_ShowMeTheMoney>(ShowMeTheMoneyPath);
+        Skill_AirEXE airExe = AssetDatabase.LoadAssetAtPath<Skill_AirEXE>(AirExePath);
+        Skill_Elephant elephant = AssetDatabase.LoadAssetAtPath<Skill_Elephant>(ElephantPath);
+        Skill_ItsMe itsMe = AssetDatabase.LoadAssetAtPath<Skill_ItsMe>(ItsMePath);
         Assert(superJump != null, "SuperJump asset is missing.");
         Assert(superSprint != null, "SuperSprint asset is missing.");
         Assert(showMeTheMoney != null, "ShowMeTheMoney asset is missing.");
-        Assert(superJump.EffectType == EnemySkillEffectType.JumpMultiplier, "SuperJump effect type is invalid.");
+        Assert(airExe != null, "AirEXE asset is missing.");
+        Assert(elephant != null, "Elephant asset is missing.");
+        Assert(itsMe != null, "ItsMe asset is missing.");
         Assert(Mathf.Approximately(superJump.Multiplier, 1.6f), "SuperJump multiplier is invalid.");
-        Assert(superSprint.EffectType == EnemySkillEffectType.MovementSpeedMultiplier, "SuperSprint effect type is invalid.");
         Assert(Mathf.Approximately(superSprint.Multiplier, 1.5f), "SuperSprint multiplier is invalid.");
-        Assert(showMeTheMoney.EffectType == EnemySkillEffectType.PistolNoReload, "ShowMeTheMoney effect type is invalid.");
+        Assert(elephant.ActivationKey == KeyCode.E, "Elephant activation is invalid.");
+        Assert(itsMe.ActivationKey == KeyCode.E, "ItsMe activation is invalid.");
 
         PlayerHack playerHack = UnityEngine.Object.FindFirstObjectByType<PlayerHack>(FindObjectsInactive.Include);
         Assert(playerHack != null, "PlayerHack is missing.");
@@ -161,7 +197,7 @@ public static class SkillStealSampleSceneSetup
         Assert(selectionUI.gameObject.scene == scene, "SkillSelectionUI is not a SampleScene object.");
         SerializedObject uiObject = new SerializedObject(selectionUI);
         Assert(uiObject.FindProperty("optionButtons").arraySize >= 2, "At least two scene option buttons are required.");
-        Assert(uiObject.FindProperty("playerSlotButtons").arraySize == PlayerSkillSlot.SlotCount, "Exactly two player slot buttons are required.");
+        Assert(uiObject.FindProperty("playerSlotButtons").arraySize == PlayerSkillSlot.SlotCount, "The scene must contain two passive slot buttons and one active slot button.");
 
         EnemySkillContainer[] containers = UnityEngine.Object.FindObjectsByType<EnemySkillContainer>(
             FindObjectsInactive.Include,
@@ -211,9 +247,18 @@ public static class SkillStealSampleSceneSetup
         Assert(Mathf.Approximately(movement.playerSettings.crouchSpeed, crouchSpeed * 1.5f), "SuperSprint crouch speed was not applied.");
         Assert(Mathf.Approximately(movement.playerSettings.maxSpeedAllowed, maxSpeed * 1.5f), "SuperSprint max speed was not applied.");
 
+        Assert(slot.TryEquipFirstEmpty(elephant, out int activeSlot) && activeSlot == PlayerSkillSlot.ActiveSlotIndex,
+            "The active skill did not use the dedicated active slot.");
+        slot.Equip(itsMe, 0);
+        Assert(slot.GetEquippedSkill(0) == superJump, "An active skill was placed in passive slot 1.");
+        slot.Equip(itsMe, PlayerSkillSlot.ActiveSlotIndex);
+        Assert(slot.GetEquippedSkill(PlayerSkillSlot.ActiveSlotIndex) == itsMe,
+            "Replacing the single active slot failed.");
+        Assert(!slot.Contains(elephant), "The previous active skill remained equipped after replacement.");
+
         slot.Equip(showMeTheMoney, 0);
         Assert(slot.GetEquippedSkill(0) == showMeTheMoney, "Full-loadout replacement did not update slot 1.");
-        Assert(slot.ContainsEffect(EnemySkillEffectType.PistolNoReload), "ShowMeTheMoney effect was not detected in the loadout.");
+        Assert(slot.ContainsSkill<Skill_ShowMeTheMoney>(), "ShowMeTheMoney was not detected in the loadout.");
 
         slot.ClearSlot(0);
         Assert(Mathf.Approximately(movement.playerSettings.jumpForce, jumpForce), "Clearing slot 1 did not restore jump force.");
@@ -226,34 +271,60 @@ public static class SkillStealSampleSceneSetup
         Assert(Mathf.Approximately(movement.playerSettings.crouchSpeed, crouchSpeed), "Crouch speed was not restored.");
         Assert(Mathf.Approximately(movement.playerSettings.maxSpeedAllowed, maxSpeed), "Max speed was not restored.");
 
-        Debug.Log($"SKILL_STEAL_SMOKE_PASS containers={validContainers} threeSkillTargets={threeSkillContainers} autoSlots=true playerSlots=2");
+        Debug.Log($"SKILL_STEAL_SMOKE_PASS containers={validContainers} threeSkillTargets={threeSkillContainers} passiveSlots=2 activeSlots=1");
     }
 
-    private static EnemySkillData CreateOrUpdateSkill(
+    private static TSkill CreateOrUpdateSkill<TSkill>(
         string path,
         string displayName,
         string description,
-        EnemySkillEffectType effectType,
-        float multiplier)
+        float multiplier,
+        float cooldown,
+        float radius,
+        float duration,
+        float power,
+        float secondaryDuration = 0f)
+        where TSkill : EnemySkillData
     {
         EnsureFolder("Assets/_Data");
         EnsureFolder(SkillFolder);
+        EnsureFolder(PassiveFolder);
+        EnsureFolder(ActiveFolder);
 
-        EnemySkillData skill = AssetDatabase.LoadAssetAtPath<EnemySkillData>(path);
+        TSkill skill = AssetDatabase.LoadAssetAtPath<TSkill>(path);
         if (skill == null)
         {
-            skill = ScriptableObject.CreateInstance<EnemySkillData>();
+            skill = ScriptableObject.CreateInstance<TSkill>();
             AssetDatabase.CreateAsset(skill, path);
         }
 
         SerializedObject skillObject = new SerializedObject(skill);
         skillObject.FindProperty("displayName").stringValue = displayName;
         skillObject.FindProperty("description").stringValue = description;
-        skillObject.FindProperty("effectType").enumValueIndex = (int)effectType;
-        skillObject.FindProperty("multiplier").floatValue = multiplier;
+        SetFloatIfPresent(skillObject, "multiplier", multiplier);
+        SetFloatIfPresent(skillObject, "damageMultiplier", multiplier);
+        SerializedProperty activationKey = skillObject.FindProperty("activationKey");
+        if (activationKey != null)
+            activationKey.intValue = (int)KeyCode.E;
+        SetFloatIfPresent(skillObject, "cooldown", cooldown);
+        SetFloatIfPresent(skillObject, "radius", radius);
+        SetFloatIfPresent(skillObject, "liftDuration", duration);
+        SetFloatIfPresent(skillObject, "stunDuration", duration);
+        SetFloatIfPresent(skillObject, "stunnedLiftDuration", secondaryDuration);
+        SetFloatIfPresent(skillObject, "lightEnemyLiftDuration", secondaryDuration);
+        SetFloatIfPresent(skillObject, "explosionForce", power);
+        SetFloatIfPresent(skillObject, "liftHeight", power);
+        SetFloatIfPresent(skillObject, "slamSpeed", power);
         skillObject.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(skill);
         return skill;
+    }
+
+    private static void SetFloatIfPresent(SerializedObject serializedObject, string propertyName, float value)
+    {
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property != null)
+            property.floatValue = value;
     }
 
     private static SkillSelectionUI CreateSkillSelectionUI()
@@ -383,7 +454,8 @@ public static class SkillStealSampleSceneSetup
         colors.selectedColor = colors.highlightedColor;
         button.colors = colors;
 
-        TMP_Text label = CreateText("SlotLabel", slotObject.transform, $"SLOT {index + 1}\nEMPTY", 22, FontStyles.Bold);
+        string slotName = index == PlayerSkillSlot.ActiveSlotIndex ? "ACTIVE" : $"PASSIVE {index + 1}";
+        TMP_Text label = CreateText("SlotLabel", slotObject.transform, $"{slotName}\nEMPTY", 22, FontStyles.Bold);
         Stretch(label.rectTransform, 14f);
         label.alignment = TextAlignmentOptions.Center;
 

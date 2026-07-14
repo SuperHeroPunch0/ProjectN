@@ -4,15 +4,12 @@ using UnityEngine;
 [RequireComponent(typeof(PlayerSkillSlot), typeof(PlayerDependencies))]
 public sealed class ShowMeTheMoneySkillEffect : MonoBehaviour
 {
-    [SerializeField] private EnemySkillData skill;
+    [SerializeField] private Skill_ShowMeTheMoney skill;
     [SerializeField] private Weapon_SO pistol;
 
     private PlayerSkillSlot skillSlot;
     private PlayerDependencies playerDependencies;
-    private bool originalInfiniteBullets;
-    private bool effectApplied;
-
-    public bool IsApplied => effectApplied;
+    public bool IsApplied => skillSlot != null && skillSlot.ContainsSkill<Skill_ShowMeTheMoney>();
 
     private void Start()
     {
@@ -20,9 +17,6 @@ public sealed class ShowMeTheMoneySkillEffect : MonoBehaviour
         playerDependencies = GetComponent<PlayerDependencies>();
 
         skillSlot.LoadoutChanged += RefreshEffect;
-        if (playerDependencies.WeaponEvents != null)
-            playerDependencies.WeaponEvents.Events.OnEquipWeapon.AddListener(HandleWeaponEquipped);
-
         RefreshEffect();
     }
 
@@ -31,71 +25,11 @@ public sealed class ShowMeTheMoneySkillEffect : MonoBehaviour
         if (skillSlot != null)
             skillSlot.LoadoutChanged -= RefreshEffect;
 
-        if (playerDependencies != null && playerDependencies.WeaponEvents != null)
-            playerDependencies.WeaponEvents.Events.OnEquipWeapon.RemoveListener(HandleWeaponEquipped);
-
-        RemoveEffect();
     }
 
     private void RefreshEffect()
     {
-        bool shouldApply = skillSlot != null && skill != null && skillSlot.Contains(skill);
-        if (shouldApply)
-            ApplyEffect();
-        else
-            RemoveEffect();
-    }
-
-    private void ApplyEffect()
-    {
-        if (pistol == null)
-            return;
-
-        if (!effectApplied)
-        {
-            originalInfiniteBullets = pistol.infiniteBullets;
-            pistol.infiniteBullets = true;
-            effectApplied = true;
-        }
-
-        RefillOwnedPistols();
-    }
-
-    private void RemoveEffect()
-    {
-        if (!effectApplied || pistol == null)
-            return;
-
-        pistol.infiniteBullets = originalInfiniteBullets;
-        effectApplied = false;
-    }
-
-    private void HandleWeaponEquipped(WeaponIdentification weapon)
-    {
-        if (effectApplied)
-            RefillPistol(weapon);
-    }
-
-    private void RefillOwnedPistols()
-    {
-        if (playerDependencies?.WeaponReference == null)
-            return;
-
-        WeaponIdentification[] inventory = playerDependencies.WeaponReference.Inventory;
-        if (inventory != null)
-        {
-            for (int i = 0; i < inventory.Length; i++)
-                RefillPistol(inventory[i]);
-        }
-
-        RefillPistol(playerDependencies.WeaponReference.Id);
-    }
-
-    private void RefillPistol(WeaponIdentification weapon)
-    {
-        if (weapon == null || weapon.weapon != pistol)
-            return;
-
-        weapon.bulletsLeftInMagazine = weapon.magazineSize;
+        // 실제 탄약 처리는 모든 씬에서 동작하는 PlayerSkillRuntime이 담당한다.
+        // 이 컴포넌트는 기존 씬/프리팹 직렬화 및 외부 IsApplied 조회 호환용이다.
     }
 }

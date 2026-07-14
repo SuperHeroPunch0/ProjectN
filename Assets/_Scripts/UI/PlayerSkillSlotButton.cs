@@ -24,7 +24,12 @@ public sealed class PlayerSkillSlotButton : MonoBehaviour
         button?.onClick.RemoveListener(Select);
     }
 
-    public void Bind(int index, EnemySkillData equippedSkill, Action<int> selectionCallback, bool interactable)
+    public void Bind(
+        int index,
+        EnemySkillData equippedSkill,
+        EnemySkillType slotType,
+        Action<int> selectionCallback,
+        bool interactable)
     {
         slotIndex = index;
         onSelected = selectionCallback;
@@ -34,9 +39,12 @@ public sealed class PlayerSkillSlotButton : MonoBehaviour
 
         if (slotLabel != null)
         {
+            string slotName = slotType == EnemySkillType.Active
+                ? "ACTIVE"
+                : $"PASSIVE {index + 1}";
             slotLabel.text = equippedSkill != null
-                ? $"SLOT {index + 1}\n{equippedSkill.DisplayName}"
-                : $"SLOT {index + 1}\nEMPTY";
+                ? $"{slotName}\n{equippedSkill.DisplayName}"
+                : $"{slotName}\nEMPTY";
         }
     }
 

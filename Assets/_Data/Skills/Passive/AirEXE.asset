@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6c423e91b724fe2ba9ee4af75d63a36, type: 3}
+  m_Name: AirEXE
+  m_EditorClassIdentifier: Assembly-CSharp::Skill_AirEXE
+  displayName: Air.exe
+  description: "\uACF5\uC911\uC5D0 \uB72C \uC801\uC744 \uC0AC\uACA9\uD558\uBA74 \uD3ED\uBC1C
+    \uD6A8\uACFC\uAC00 \uBC1C\uC0DD"
+  icon: {fileID: 0}
+  damageMultiplier: 1
+  radius: 10
+  explosionForce: 8
