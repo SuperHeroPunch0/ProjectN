@@ -67,6 +67,8 @@ namespace cowsins
         }
         private void HandleBulletHoleImpacts(int layer, RaycastHit h)
         {
+            if (h.collider == null) return;
+
             Quaternion normalRot = Quaternion.LookRotation(h.normal);
             Vector3 hitPoint = h.point;
 
@@ -77,13 +79,14 @@ namespace cowsins
                 Quaternion.identity
             );
 
-            GameObject bulletHoleImpact = PoolManager.Instance.GetFromPool(
-                weaponReference.Weapon.bulletHoleImpact.GetBulletHoleForLayer(layer),
-                hitPoint,
-                Quaternion.identity
-            );
-
-            if (h.collider == null) return;
+            CombatEnemyHealth enemyHealth = h.collider.GetComponentInParent<CombatEnemyHealth>();
+            bool spawnBulletHole = enemyHealth == null || enemyHealth.SpawnBulletHoles;
+            GameObject bulletHoleImpact = spawnBulletHole
+                ? PoolManager.Instance.GetFromPool(
+                    weaponReference.Weapon.bulletHoleImpact.GetBulletHoleForLayer(layer),
+                    hitPoint,
+                    Quaternion.identity)
+                : null;
 
             if (impactEffect != null)
             {
