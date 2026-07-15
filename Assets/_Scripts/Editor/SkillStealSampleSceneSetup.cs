@@ -56,9 +56,9 @@ public static class SkillStealSampleSceneSetup
         Skill_ItsMe itsMe = CreateOrUpdateSkill<Skill_ItsMe>(
             ItsMePath,
             "It's me !",
-            "공중에서 내려찍어 범위 내 적들을 잠시 경직시킵니다. 쿨타임 4초.",
+            "공중에서 내려찍어 적에게 피해를 주고 가벼운 적을 바깥쪽으로 날립니다. 낙하 높이가 높을수록 피해와 넉백이 강해집니다. 쿨타임 4초.",
             1f, 4f, 6f, 1.5f, 22f,
-            1.5f);
+            0f, 6f, 10f, 5f);
         EnemySkillData[] additionalSkills = { airExe, elephant, itsMe };
 
         PlayerHack playerHack = UnityEngine.Object.FindFirstObjectByType<PlayerHack>(FindObjectsInactive.Include);
@@ -177,6 +177,9 @@ public static class SkillStealSampleSceneSetup
         Assert(Mathf.Approximately(superSprint.Multiplier, 1.5f), "SuperSprint multiplier is invalid.");
         Assert(elephant.ActivationKey == KeyCode.E, "Elephant activation is invalid.");
         Assert(itsMe.ActivationKey == KeyCode.E, "ItsMe activation is invalid.");
+        Assert(Mathf.Approximately(itsMe.KnockbackStrength, 6f), "ItsMe knockback strength is invalid.");
+        Assert(Mathf.Approximately(itsMe.DamageAtReferenceHeight, 10f), "ItsMe damage is invalid.");
+        Assert(Mathf.Approximately(itsMe.ReferenceFallHeight, 5f), "ItsMe reference fall height is invalid.");
 
         PlayerHack playerHack = UnityEngine.Object.FindFirstObjectByType<PlayerHack>(FindObjectsInactive.Include);
         Assert(playerHack != null, "PlayerHack is missing.");
@@ -283,7 +286,10 @@ public static class SkillStealSampleSceneSetup
         float radius,
         float duration,
         float power,
-        float secondaryDuration = 0f)
+        float secondaryDuration = 0f,
+        float knockbackStrength = 0f,
+        float damageAtReferenceHeight = 0f,
+        float referenceFallHeight = 0f)
         where TSkill : EnemySkillData
     {
         EnsureFolder("Assets/_Data");
@@ -311,10 +317,12 @@ public static class SkillStealSampleSceneSetup
         SetFloatIfPresent(skillObject, "liftDuration", duration);
         SetFloatIfPresent(skillObject, "stunDuration", duration);
         SetFloatIfPresent(skillObject, "stunnedLiftDuration", secondaryDuration);
-        SetFloatIfPresent(skillObject, "lightEnemyLiftDuration", secondaryDuration);
         SetFloatIfPresent(skillObject, "explosionForce", power);
         SetFloatIfPresent(skillObject, "liftHeight", power);
         SetFloatIfPresent(skillObject, "slamSpeed", power);
+        SetFloatIfPresent(skillObject, "knockbackStrength", knockbackStrength);
+        SetFloatIfPresent(skillObject, "damageAtReferenceHeight", damageAtReferenceHeight);
+        SetFloatIfPresent(skillObject, "referenceFallHeight", referenceFallHeight);
         skillObject.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(skill);
         return skill;
