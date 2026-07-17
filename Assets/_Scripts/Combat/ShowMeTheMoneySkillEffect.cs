@@ -5,7 +5,6 @@ using UnityEngine;
 public sealed class ShowMeTheMoneySkillEffect : MonoBehaviour
 {
     [SerializeField] private Skill_ShowMeTheMoney skill;
-    [SerializeField] private Weapon_SO pistol;
 
     private PlayerSkillSlot skillSlot;
     private PlayerDependencies playerDependencies;

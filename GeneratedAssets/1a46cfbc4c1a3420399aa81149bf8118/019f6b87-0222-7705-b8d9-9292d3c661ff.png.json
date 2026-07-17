@@ -1,0 +1,31 @@
+{
+    "asset": "1a46cfbc4c1a3420399aa81149bf8118",
+    "fileName": "019f6b87-0222-7705-b8d9-9292d3c661ff.png",
+    "prompt": "Overgrown sci-fi technology metal storage crate, military cargo box, overgrown with green leaves and moss. Isolated on white background, centered, full body view, high detail digital art, concept design",
+    "negativePrompt": "",
+    "model": "gemini-3.1-flash",
+    "modelName": "Gemini 3.1 Nano Banana 2",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0,
+    "dynamicParams": {
+        "serializedData": []
+    }
+}

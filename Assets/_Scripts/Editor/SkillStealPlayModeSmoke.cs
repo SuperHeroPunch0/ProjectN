@@ -108,11 +108,23 @@ public static class SkillStealPlayModeSmoke
 
             float originalJumpForce = movement.playerSettings.jumpForce;
             float originalTimeScale = Time.timeScale;
-            Weapon_SO pistol = threeSkillTargets[0].Skills[2] is Skill_ShowMeTheMoney
-                ? GetPrivateField<Weapon_SO>(moneyEffect, "pistol")
-                : null;
-            Assert(pistol != null, "ShowMeTheMoney Pistol reference is missing.");
-            bool originalInfiniteBullets = pistol.infiniteBullets;
+            WeaponIdentification[] inventory = dependencies.WeaponReference.Inventory;
+            Assert(inventory != null, "Player weapon inventory is missing.");
+            Dictionary<Weapon_SO, bool> originalAmmoBehavior = new Dictionary<Weapon_SO, bool>();
+            Weapon_SO nonPistolWeapon = null;
+            for (int i = 0; i < inventory.Length; i++)
+            {
+                Weapon_SO weapon = inventory[i]?.weapon;
+                if (weapon == null)
+                    continue;
+
+                if (!originalAmmoBehavior.ContainsKey(weapon))
+                    originalAmmoBehavior.Add(weapon, weapon.infiniteBullets);
+                if (!weapon.name.ToLowerInvariant().Contains("pistol"))
+                    nonPistolWeapon = weapon;
+            }
+            Assert(originalAmmoBehavior.Count > 0, "Player has no weapon to test ShowMeTheMoney.");
+            Assert(nonPistolWeapon != null, "A non-Pistol weapon is required to verify generic ammo behavior.");
 
             slot.ClearEquippedSkill();
 
@@ -174,12 +186,15 @@ public static class SkillStealPlayModeSmoke
             Assert(slot.GetEquippedSkill(0) is Skill_ShowMeTheMoney, "ShowMeTheMoney did not replace slot 1.");
             Assert(slot.GetEquippedSkill(1) is Skill_OperationCWAL, "Replacing slot 1 changed slot 2.");
             Assert(moneyEffect.IsApplied, "ShowMeTheMoney runtime effect was not applied.");
-            Assert(pistol.infiniteBullets, "ShowMeTheMoney did not disable Pistol ammo consumption.");
+            foreach (Weapon_SO weapon in originalAmmoBehavior.Keys)
+                Assert(weapon.infiniteBullets, $"ShowMeTheMoney did not disable ammo consumption for {weapon.name}.");
+            Assert(nonPistolWeapon.infiniteBullets, "ShowMeTheMoney still only applies to Pistol.");
             AssertCombatResumed(playerHack, gameManager, bulletTime, selectionUI, originalTimeScale, thirdHealth);
 
             slot.Equip(threeSkillTargets[0].Skills[0], 0);
             Assert(!moneyEffect.IsApplied, "ShowMeTheMoney effect remained after replacement.");
-            Assert(pistol.infiniteBullets == originalInfiniteBullets, "Pistol ammo behavior was not restored after unequipping.");
+            foreach (KeyValuePair<Weapon_SO, bool> entry in originalAmmoBehavior)
+                Assert(entry.Key.infiniteBullets == entry.Value, $"{entry.Key.name} ammo behavior was not restored after unequipping.");
             slot.ClearEquippedSkill();
 
             Debug.Log("SKILL_STEAL_PLAYMODE_PASS autoSlots=true duplicateDisabled=true allOwnedSkip=true replacement=true showMeTheMoney=true");

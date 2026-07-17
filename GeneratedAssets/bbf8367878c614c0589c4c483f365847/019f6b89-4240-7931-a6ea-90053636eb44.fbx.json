@@ -1,0 +1,23 @@
+{
+    "asset": "bbf8367878c614c0589c4c483f365847",
+    "fileName": "019f6b89-4240-7931-a6ea-90053636eb44.fbx",
+    "prompt": "A high quality overgrown sci-fi technology metal storage crate, cargo box with green leaves and moss, PBR textures",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "1a46cfbc4c1a3420399aa81149bf8118",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

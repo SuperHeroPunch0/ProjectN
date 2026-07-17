@@ -1,0 +1,31 @@
+{
+    "asset": "d4752506afeab4d32b4ef61c239eb7ce",
+    "fileName": "019f6b87-36a1-700e-84a2-f5a800ca85ba.png",
+    "prompt": "Sci-fi heavy crawler carriage vehicle, rusty dark metal body, thick industrial wheels, sci-fi utility transport machinery. Isolated on white background, centered, full body view, high detail digital art, concept design",
+    "negativePrompt": "",
+    "model": "gemini-3.1-flash",
+    "modelName": "Gemini 3.1 Nano Banana 2",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0,
+    "dynamicParams": {
+        "serializedData": []
+    }
+}

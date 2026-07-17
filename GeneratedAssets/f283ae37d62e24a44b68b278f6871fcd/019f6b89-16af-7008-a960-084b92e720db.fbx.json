@@ -1,0 +1,23 @@
+{
+    "asset": "f283ae37d62e24a44b68b278f6871fcd",
+    "fileName": "019f6b89-16af-7008-a960-084b92e720db.fbx",
+    "prompt": "A high quality sci-fi heavy crawler vehicle carriage body with industrial treads and rusty metal, PBR textures",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "d4752506afeab4d32b4ef61c239eb7ce",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

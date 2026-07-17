@@ -1,0 +1,23 @@
+{
+    "asset": "ac16836b9bd03450eaa42787c5da6698",
+    "fileName": "019f6b89-1bfd-759f-aeef-e944bd52d19b.fbx",
+    "prompt": "A high quality overgrown sci-fi reactor core computer server generator with pulsing lights and hanging vines, PBR textures",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "54d6cf87d71e6489a814764d508bbcbc",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

@@ -12,7 +12,7 @@ public sealed class Skill_ShowMeTheMoney : PassiveSkillBase
 
     public override void OnEquipped(PlayerSkillRuntime runtime)
     {
-        ApplyToOwnedPistols(runtime);
+        ApplyToOwnedWeapons(runtime);
     }
 
     public override void OnUnequipped(PlayerSkillRuntime runtime)
@@ -31,10 +31,10 @@ public sealed class Skill_ShowMeTheMoney : PassiveSkillBase
 
     public override void OnWeaponEquipped(PlayerSkillRuntime runtime, WeaponIdentification weapon)
     {
-        ApplyToPistol(runtime, weapon);
+        ApplyToWeapon(runtime, weapon);
     }
 
-    private void ApplyToOwnedPistols(PlayerSkillRuntime runtime)
+    private void ApplyToOwnedWeapons(PlayerSkillRuntime runtime)
     {
         if (runtime.Dependencies?.WeaponReference == null)
             return;
@@ -43,15 +43,15 @@ public sealed class Skill_ShowMeTheMoney : PassiveSkillBase
         if (inventory != null)
         {
             for (int i = 0; i < inventory.Length; i++)
-                ApplyToPistol(runtime, inventory[i]);
+                ApplyToWeapon(runtime, inventory[i]);
         }
 
-        ApplyToPistol(runtime, runtime.Dependencies.WeaponReference.Id);
+        ApplyToWeapon(runtime, runtime.Dependencies.WeaponReference.Id);
     }
 
-    private void ApplyToPistol(PlayerSkillRuntime runtime, WeaponIdentification weapon)
+    private void ApplyToWeapon(PlayerSkillRuntime runtime, WeaponIdentification weapon)
     {
-        if (weapon?.weapon == null || !weapon.weapon.name.ToLowerInvariant().Contains("pistol"))
+        if (weapon?.weapon == null)
             return;
 
         AmmoState state = runtime.GetOrCreateState<AmmoState>(this);

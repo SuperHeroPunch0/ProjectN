@@ -21,7 +21,6 @@ public static class SkillStealSampleSceneSetup
     private const string AirExePath = PassiveFolder + "/AirEXE.asset";
     private const string ElephantPath = ActiveFolder + "/Elephant.asset";
     private const string ItsMePath = ActiveFolder + "/ItsMe.asset";
-    private const string PistolPath = "Assets/Cowsins/ScriptableObjects/Weapons/Pistol.asset";
 
     [MenuItem("NullPoint/Setup Skill Steal Sample Scene")]
     public static void SetupSampleScene()
@@ -78,17 +77,12 @@ public static class SkillStealSampleSceneSetup
             equippedSkills.GetArrayElementAtIndex(i).objectReferenceValue = null;
         slotObject.ApplyModifiedPropertiesWithoutUndo();
 
-        Weapon_SO pistol = AssetDatabase.LoadAssetAtPath<Weapon_SO>(PistolPath);
-        if (pistol == null)
-            throw new InvalidOperationException($"Pistol weapon asset was not found at {PistolPath}.");
-
         ShowMeTheMoneySkillEffect moneyEffect = player.GetComponent<ShowMeTheMoneySkillEffect>();
         if (moneyEffect == null)
             moneyEffect = player.AddComponent<ShowMeTheMoneySkillEffect>();
 
         SerializedObject moneyEffectObject = new SerializedObject(moneyEffect);
         moneyEffectObject.FindProperty("skill").objectReferenceValue = showMeTheMoney;
-        moneyEffectObject.FindProperty("pistol").objectReferenceValue = pistol;
         moneyEffectObject.ApplyModifiedPropertiesWithoutUndo();
 
         SkillSelectionUI selectionUI = CreateSkillSelectionUI();
@@ -189,7 +183,6 @@ public static class SkillStealSampleSceneSetup
         Assert(moneyEffect != null, "ShowMeTheMoneySkillEffect is missing from Player.");
         SerializedObject moneyEffectObject = new SerializedObject(moneyEffect);
         Assert(moneyEffectObject.FindProperty("skill").objectReferenceValue == showMeTheMoney, "ShowMeTheMoney skill reference is invalid.");
-        Assert(moneyEffectObject.FindProperty("pistol").objectReferenceValue == AssetDatabase.LoadAssetAtPath<Weapon_SO>(PistolPath), "ShowMeTheMoney Pistol reference is invalid.");
 
         SerializedObject hackObject = new SerializedObject(playerHack);
         Assert(hackObject.FindProperty("skillSelectionUI").objectReferenceValue != null, "SkillSelectionUI reference is missing.");
