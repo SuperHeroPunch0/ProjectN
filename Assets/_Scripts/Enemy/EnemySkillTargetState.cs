@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using BehaviorDesigner.Runtime;
 using cowsins;
 using UnityEngine;
+using UnityEngine.AI;
 
 [DisallowMultipleComponent]
 public sealed class EnemySkillTargetState : MonoBehaviour
@@ -9,14 +11,19 @@ public sealed class EnemySkillTargetState : MonoBehaviour
     [SerializeField] private bool heavy;
     [SerializeField, Min(0.01f)] private float heavyMassThreshold = 50f;
     [SerializeField, Min(0f)] private float groundCheckDistance = 0.35f;
+    [SerializeField, Min(1f)] private float maxKnockbackFallDistance = 100f;
+    [SerializeField, Min(0.05f)] private float navMeshReattachDistance = 1f;
 
     private readonly List<Behaviour> disabledBehaviours = new List<Behaviour>();
     private Rigidbody body;
     private Collider targetCollider;
+    private NavMeshAgent navMeshAgent;
     private Coroutine statusRoutine;
     private bool lifted;
     private bool originalKinematic;
     private bool originalUseGravity;
+    private bool navMeshAgentWasEnabled;
+    private bool navMeshAgentWasStopped;
 
     public bool IsStunned { get; private set; }
     public bool IsLifted => lifted;
@@ -41,6 +48,7 @@ public sealed class EnemySkillTargetState : MonoBehaviour
     {
         body = GetComponent<Rigidbody>();
         targetCollider = GetComponentInChildren<Collider>();
+        navMeshAgent = GetComponent<NavMeshAgent>();
     }
 
     private void OnDisable()
@@ -88,6 +96,9 @@ public sealed class EnemySkillTargetState : MonoBehaviour
     private void BeginStatus(bool stun, bool airborne)
     {
         CancelCurrentStatus();
+
+        navMeshAgentWasEnabled = navMeshAgent != null && navMeshAgent.enabled;
+        navMeshAgentWasStopped = navMeshAgentWasEnabled && navMeshAgent.isOnNavMesh && navMeshAgent.isStopped;
 
         if (stun)
             DisableEnemyBehaviours();
@@ -159,7 +170,11 @@ public sealed class EnemySkillTargetState : MonoBehaviour
     private IEnumerator KnockbackRoutine(Vector3 direction, float distance, float duration, float height)
     {
         Vector3 start = transform.position;
-        Vector3 landing = FindLandingPosition(start, direction, distance, height);
+        Vector3 landing = FindLandingPosition(start, direction, distance, height, out bool groundFound);
+        bool fallsFromLedge = landing.y < start.y - groundCheckDistance;
+        Vector3 knockbackEnd = landing;
+        if (fallsFromLedge)
+            knockbackEnd.y = start.y;
         float elapsed = 0f;
 
         while (elapsed < duration)
@@ -168,15 +183,48 @@ public sealed class EnemySkillTargetState : MonoBehaviour
             float t = Mathf.Clamp01(elapsed / duration);
             float horizontalT = 1f - (1f - t) * (1f - t);
             float arc = 4f * height * t * (1f - t);
-            transform.position = Vector3.LerpUnclamped(start, landing, horizontalT) + Vector3.up * arc;
+            transform.position = Vector3.LerpUnclamped(start, knockbackEnd, horizontalT) + Vector3.up * arc;
             yield return null;
         }
 
-        transform.position = landing;
+        transform.position = knockbackEnd;
+        if (fallsFromLedge)
+            yield return FallToLanding(landing, groundFound);
+        else
+            transform.position = landing;
+
         CompleteStatus();
     }
 
-    private Vector3 FindLandingPosition(Vector3 start, Vector3 direction, float requestedDistance, float height)
+    private IEnumerator FallToLanding(Vector3 landing, bool groundFound)
+    {
+        float verticalSpeed = 0f;
+        float acceleration = Mathf.Max(9.81f, Mathf.Abs(Physics.gravity.y));
+
+        while (transform.position.y > landing.y)
+        {
+            float deltaTime = Mathf.Min(Time.deltaTime, 0.05f);
+            verticalSpeed += acceleration * deltaTime;
+            Vector3 position = transform.position;
+            position.y = Mathf.Max(landing.y, position.y - verticalSpeed * deltaTime);
+            transform.position = position;
+            yield return null;
+        }
+
+        // When no collider exists below the ledge, landing is the configured fail-safe
+        // distance. Keep the target there instead of allowing its old NavMesh position
+        // to pull it back onto the platform.
+        transform.position = landing;
+        if (!groundFound)
+            navMeshAgentWasEnabled = false;
+    }
+
+    private Vector3 FindLandingPosition(
+        Vector3 start,
+        Vector3 direction,
+        float requestedDistance,
+        float height,
+        out bool groundFound)
     {
         float distance = requestedDistance;
         Bounds bounds = targetCollider != null
@@ -205,13 +253,15 @@ public sealed class EnemySkillTargetState : MonoBehaviour
         Vector3 landing = start + direction * distance;
         float footOffset = start.y - bounds.min.y;
         Vector3 groundOrigin = landing + Vector3.up * (height + footOffset + 1f);
+        float groundCastDistance = maxKnockbackFallDistance + height + footOffset + 1f;
         RaycastHit[] groundHits = Physics.RaycastAll(
             groundOrigin,
             Vector3.down,
-            height + footOffset + 2f,
+            groundCastDistance,
             ~0,
             QueryTriggerInteraction.Ignore);
         float closestGroundDistance = float.PositiveInfinity;
+        groundFound = false;
 
         for (int i = 0; i < groundHits.Length; i++)
         {
@@ -224,7 +274,11 @@ public sealed class EnemySkillTargetState : MonoBehaviour
 
             closestGroundDistance = hit.distance;
             landing.y = hit.point.y + footOffset;
+            groundFound = true;
         }
+
+        if (!groundFound)
+            landing.y = start.y - maxKnockbackFallDistance;
 
         return landing;
     }
@@ -271,14 +325,62 @@ public sealed class EnemySkillTargetState : MonoBehaviour
             body.useGravity = originalUseGravity;
         }
 
+        bool navMeshAgentReady = RestoreNavMeshAgentAtCurrentPosition();
+
         for (int i = 0; i < disabledBehaviours.Count; i++)
         {
-            if (disabledBehaviours[i] != null)
-                disabledBehaviours[i].enabled = true;
+            Behaviour behaviour = disabledBehaviours[i];
+            if (behaviour == null || behaviour == navMeshAgent)
+                continue;
+
+            // A Behavior Designer NavMesh task calls isStopped/SetDestination as soon
+            // as the tree resumes. Keep the tree suspended when the landing surface
+            // has no NavMesh instead of producing errors every frame.
+            if (!navMeshAgentReady && behaviour is BehaviorTree)
+                continue;
+
+            behaviour.enabled = true;
         }
 
         disabledBehaviours.Clear();
+        navMeshAgentWasEnabled = false;
         IsStunned = false;
         lifted = false;
+    }
+
+    private bool RestoreNavMeshAgentAtCurrentPosition()
+    {
+        if (navMeshAgent == null)
+            return true;
+        if (!navMeshAgentWasEnabled)
+            return navMeshAgent.enabled && navMeshAgent.isOnNavMesh;
+
+        int areaMask = navMeshAgent.areaMask;
+        if (!NavMesh.SamplePosition(
+                transform.position,
+                out NavMeshHit hit,
+                navMeshReattachDistance,
+                areaMask) ||
+            hit.position.y > transform.position.y + groundCheckDistance)
+        {
+            // Re-enabling an agent away from a NavMesh can restore its stale internal
+            // position and visibly teleport the enemy back to the ledge.
+            navMeshAgent.enabled = false;
+            return false;
+        }
+
+        transform.position = hit.position;
+        navMeshAgent.enabled = true;
+        if (!navMeshAgent.isOnNavMesh)
+        {
+            navMeshAgent.enabled = false;
+            return false;
+        }
+
+        navMeshAgent.Warp(hit.position);
+        navMeshAgent.nextPosition = hit.position;
+        navMeshAgent.ResetPath();
+        navMeshAgent.isStopped = navMeshAgentWasStopped;
+        return true;
     }
 }

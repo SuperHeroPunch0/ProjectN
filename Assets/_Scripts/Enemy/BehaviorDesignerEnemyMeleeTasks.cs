@@ -1,6 +1,7 @@
 using BehaviorDesigner.Runtime;
 using BehaviorDesigner.Runtime.Tasks;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace ProjectN.BehaviorDesigner.Tasks
 {
@@ -8,15 +9,49 @@ namespace ProjectN.BehaviorDesigner.Tasks
     [TaskCategory("ProjectN/Movement")]
     public sealed class SeekUsingNavMeshAgentSpeed : global::BehaviorDesigner.Runtime.Tasks.Movement.Seek
     {
+        private bool canUseAgent;
+
         public override void OnStart()
         {
+            canUseAgent = IsAgentReady();
+            if (!canUseAgent)
+                return;
+
             // NavMeshMovement normally copies its task-local m_Speed (5 in the old tree)
             // into the agent. Read the inspector value first so entering Seek never
             // overwrites the designer-configured NavMeshAgent speed.
-            if (m_NavMeshAgent != null)
-                m_Speed.Value = m_NavMeshAgent.speed;
+            m_Speed.Value = m_NavMeshAgent.speed;
 
             base.OnStart();
+        }
+
+        public override TaskStatus OnUpdate()
+        {
+            if (!canUseAgent || !IsAgentReady())
+                return TaskStatus.Failure;
+
+            return base.OnUpdate();
+        }
+
+        public override void OnEnd()
+        {
+            if (canUseAgent && IsAgentReady())
+                base.OnEnd();
+            canUseAgent = false;
+        }
+
+        public override void OnBehaviorComplete()
+        {
+            if (canUseAgent && IsAgentReady())
+                base.OnBehaviorComplete();
+            canUseAgent = false;
+        }
+
+        private bool IsAgentReady()
+        {
+            return m_NavMeshAgent != null &&
+                   m_NavMeshAgent.enabled &&
+                   m_NavMeshAgent.isOnNavMesh;
         }
     }
 
