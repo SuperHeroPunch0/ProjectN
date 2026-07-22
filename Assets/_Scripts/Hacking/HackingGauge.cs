@@ -1,10 +1,12 @@
 using cowsins;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public class HackingGauge : MonoBehaviour
 {
-    [SerializeField] private TextMeshProUGUI gaugeText; // 프로토타입용
+    [SerializeField] private TextMeshProUGUI gaugeText;
+    [SerializeField] private Image LoadingBar;
     [SerializeField] private int maxGaugeValue = 100;
     [SerializeField] private int gaugeIncrement = 15;
 
@@ -42,6 +44,8 @@ public class HackingGauge : MonoBehaviour
     private void UpdateGaugeText()
     {
         if (gaugeText != null)
-            gaugeText.text = $"{currentGaugeValue}/{maxGaugeValue}";
+            gaugeText.text = $"{currentGaugeValue}";
+        if (LoadingBar != null)
+            LoadingBar.fillAmount = (float)currentGaugeValue / maxGaugeValue;
     }
 }
